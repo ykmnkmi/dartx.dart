@@ -1,4 +1,5 @@
-import 'package:_fe_analyzer_shared/src/scanner/token.dart';
+import 'package:_fe_analyzer_shared/src/scanner/token.dart'
+    show CommentToken, Keyword, Token, TokenType;
 import 'package:dartx/src/scanner.dart';
 
 final class LazyToken implements Token {
@@ -115,7 +116,12 @@ final class LazyToken implements Token {
       scanner.scanNextToken(code);
     }
 
-    return token.next;
+    Token next = token.next!;
+    // print(''
+    //     '${scanner.scanOffset.toString().padLeft(4)} '
+    //     '${next.type.name.padLeft(20)} ${next.toString().padLeft(30)} '
+    //     '${stack()}');
+    return next;
   }
 
   @override
@@ -192,4 +198,8 @@ final class LazyToken implements Token {
   Object value() {
     return token.value();
   }
+}
+
+String stack() {
+  return StackTrace.current.toString().split('\n').elementAt(2).substring(8);
 }

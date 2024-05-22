@@ -1,9 +1,11 @@
-import 'package:_fe_analyzer_shared/src/scanner/abstract_scanner.dart';
-import 'package:_fe_analyzer_shared/src/scanner/scanner.dart';
+import 'package:_fe_analyzer_shared/src/scanner/abstract_scanner.dart'
+    show AbstractScanner, ScannerConfiguration;
+import 'package:_fe_analyzer_shared/src/scanner/scanner.dart'
+    show ScannerConfiguration, Token;
 import 'package:dartx/src/string_scanner_base.dart';
 import 'package:dartx/src/token.dart';
 import 'package:dartx/src/x_scanner.dart';
-import 'package:source_span/source_span.dart';
+import 'package:source_span/source_span.dart' show SourceFile;
 
 final class DartXScanner extends AbstractScanner
     with StringScannerBase, XScanner {

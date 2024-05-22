@@ -1,8 +1,18 @@
-import 'package:_fe_analyzer_shared/src/scanner/abstract_scanner.dart';
-import 'package:_fe_analyzer_shared/src/scanner/scanner.dart';
-import 'package:_fe_analyzer_shared/src/scanner/string_canonicalizer.dart';
-import 'package:_fe_analyzer_shared/src/scanner/token.dart';
-import 'package:_fe_analyzer_shared/src/scanner/token_impl.dart';
+import 'package:_fe_analyzer_shared/src/scanner/abstract_scanner.dart'
+    show AbstractScanner;
+import 'package:_fe_analyzer_shared/src/scanner/scanner.dart'
+    show LanguageVersionToken, StringTokenImpl;
+import 'package:_fe_analyzer_shared/src/scanner/string_canonicalizer.dart'
+    show canonicalizeString, canonicalizeSubString;
+import 'package:_fe_analyzer_shared/src/scanner/token.dart'
+    show
+        CommentToken,
+        LanguageVersionToken,
+        StringToken,
+        SyntheticStringToken,
+        TokenType;
+import 'package:_fe_analyzer_shared/src/scanner/token_impl.dart'
+    show DartDocToken, LanguageVersionTokenImpl, StringTokenImpl;
 
 mixin StringScannerBase on AbstractScanner {
   abstract String string;

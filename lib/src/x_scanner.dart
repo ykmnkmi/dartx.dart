@@ -1,7 +1,7 @@
 import 'package:dartx/src/errors.dart';
 import 'package:dartx/src/patterns.dart';
 import 'package:dartx/src/string_scanner_base.dart';
-import 'package:source_span/source_span.dart';
+import 'package:source_span/source_span.dart' show SourceFile, SourceSpan;
 
 mixin XScanner on StringScannerBase {
   SourceFile get sourceFile;

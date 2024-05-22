@@ -1,4 +1,4 @@
-import 'package:source_span/source_span.dart';
+import 'package:source_span/source_span.dart' show SourceSpan;
 
 class ParseError extends Error {
   ParseError(this.errorCode, this.span);
@@ -35,9 +35,9 @@ const ErrorCode expectedProperty = (
   message: 'Expected property',
 );
 
-const ErrorCode expectedTag = (
-  code: 'expected-tag',
-  message: 'Expected tag',
+const ErrorCode expectedNode = (
+  code: 'expected-node',
+  message: 'Expected node',
 );
 
 const ErrorCode invalidTagName = (

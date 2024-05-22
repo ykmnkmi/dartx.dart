@@ -1,14 +1,19 @@
-import 'package:_fe_analyzer_shared/src/parser/parser_impl.dart' as fe;
-import 'package:analyzer/dart/ast/token.dart';
-import 'package:analyzer/src/fasta/ast_builder.dart';
+import 'dart:convert';
+
+import 'package:_fe_analyzer_shared/src/parser/parser_impl.dart' as fe
+    show Parser;
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart' show Token;
+import 'package:analyzer/src/fasta/ast_builder.dart' show AstBuilder;
 import 'package:dartx/src/errors.dart';
 import 'package:dartx/src/html.dart';
 import 'package:dartx/src/patterns.dart';
 import 'package:dartx/src/x_scanner.dart';
 
+typedef Node = (String, List<(String, Object)>, List<Object?>);
+
 mixin XParser on fe.Parser {
-  @override
-  AstBuilder get listener;
+  AstBuilder get builder;
 
   XScanner get scanner;
 
@@ -214,11 +219,21 @@ mixin XParser on fe.Parser {
 
     Object? value = pop();
 
-    if (value is! (String, List<(String, Object)>, List<Object?>)) {
-      error(expectedTag);
+    if (value is! Node) {
+      error(expectedNode);
     }
 
-    var (tag, properties, children) = value;
+    String code = renderNode(value);
+    parsed = scanner.scanOffset;
+
+    scanner.string = scanner.string.replaceRange(token.offset, parsed, code);
+    parsed = token.offset + code.length;
+    scanner.scanOffset = token.offset - 1;
+    return super.parseExpression(scanner.tail);
+  }
+
+  String renderNode(Node node) {
+    var (tag, properties, children) = node;
 
     StringBuffer buffer = StringBuffer();
 
@@ -227,17 +242,7 @@ mixin XParser on fe.Parser {
         buffer.write('empty()');
       } else {
         buffer.write('fragment([');
-
-        for (Object? child in children) {
-          if (child is String) {
-            buffer.write(escape(child));
-          } else {
-            buffer.write(child);
-          }
-
-          buffer.write(',');
-        }
-
+        writeChildren(buffer, children);
         buffer.write('])');
       }
     } else {
@@ -279,8 +284,10 @@ mixin XParser on fe.Parser {
 
           if (value is String) {
             buffer.write(escape(value));
-          } else {
+          } else if (value is Expression) {
             buffer.write(value);
+          } else {
+            throw StateError('Invalid value: $value');
           }
 
           buffer.write(',');
@@ -297,8 +304,10 @@ mixin XParser on fe.Parser {
 
           if (listener is String) {
             buffer.write(escape(listener));
-          } else {
+          } else if (listener is Expression) {
             buffer.write(listener);
+          } else {
+            throw StateError('Invalid listener: $listener');
           }
 
           buffer.write(',');
@@ -307,31 +316,113 @@ mixin XParser on fe.Parser {
         buffer.write('}');
       }
 
+      trimChildren(children);
+
       if (children.isNotEmpty) {
         buffer.write(', children: <Object>[');
-
-        for (Object? child in children) {
-          if (child is String) {
-            buffer.write(escape(child));
-          } else {
-            buffer.write(child);
-          }
-
-          buffer.write(',');
-        }
-
-        buffer.write('],');
+        writeChildren(buffer, children);
+        buffer.write(']');
       }
 
-      buffer.write(')');
+      buffer.write(',)');
     }
 
     String code = '$buffer';
-    parsed = scanner.scanOffset;
-    scanner.string = scanner.string.replaceRange(token.offset, parsed, code);
-    parsed = token.offset + code.length;
-    scanner.scanOffset = token.offset - 1;
-    return super.parseExpression(scanner.tail);
+    return code;
+  }
+
+  void trimChildren(List<Object?> children) {
+    if (children.isEmpty) {
+      return;
+    }
+
+    if (children.first case String string) {
+      String first = string.trimLeft();
+
+      if (first.isEmpty) {
+        children.removeAt(0);
+      } else {
+        children[0] = first;
+      }
+    }
+
+    if (children.isEmpty) {
+      return;
+    }
+
+    if (children.last case String child) {
+      String last = child.trimRight();
+
+      if (last.isEmpty) {
+        children.removeLast();
+      } else {
+        children.last = last;
+      }
+    }
+
+    if (children.length > 2) {
+      for (int i = 1; i < children.length - 1;) {
+        Object? child = children[i];
+
+        if (child is String) {
+          List<String> lines = const LineSplitter().convert(child);
+          int length = lines.length;
+
+          if (length > 1) {
+            List<String> trimmed = <String>[];
+            String line = lines.first.trimRight();
+
+            if (line.isNotEmpty) {
+              trimmed.add(line);
+            }
+
+            for (int j = 1; j < length - 2; j++) {
+              line = lines[j].trim();
+
+              if (line.isNotEmpty) {
+                trimmed.add(line);
+              }
+            }
+
+            line = lines[length - 1].trimLeft();
+
+            if (line.isNotEmpty) {
+              trimmed.add(line);
+            }
+
+            if (trimmed.isEmpty) {
+              children.removeAt(i);
+              continue;
+            }
+
+            children[i] = trimmed.join(' ');
+          }
+        }
+
+        i += 1;
+      }
+    }
+  }
+
+  void writeChildren(StringBuffer buffer, List<Object?> children) {
+    for (Object? child in children) {
+      if (child is String) {
+        writeText(buffer, child);
+      } else if (child is Node) {
+        buffer.write(renderNode(child));
+        buffer.write(',');
+      } else if (child is Expression) {
+        buffer.write(child);
+        buffer.write(',');
+      } else {
+        throw StateError('Invalid child: $child');
+      }
+    }
+  }
+
+  void writeText(StringBuffer buffer, String text) {
+    buffer.write(escape(text));
+    buffer.write(',');
   }
 
   Never error(ErrorCode errorCode, [int? position, int? end]) {
@@ -340,5 +431,9 @@ mixin XParser on fe.Parser {
 }
 
 String escape(String value) {
-  return "'${value.replaceAll("'", "\\'")}'";
+  String escaped = value
+      .replaceAll("'", r"\'")
+      .replaceAll('\r\n', r'\n')
+      .replaceAll('\n', r'\n');
+  return "'$escaped'";
 }

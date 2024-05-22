@@ -1,5 +1,5 @@
-import 'package:analyzer/error/error.dart';
-import 'package:analyzer/error/listener.dart';
+import 'package:analyzer/error/error.dart' show AnalysisError;
+import 'package:analyzer/error/listener.dart' show AnalysisErrorListener;
 
 final class ThrowingErrorListener extends AnalysisErrorListener {
   @override

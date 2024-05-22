@@ -1,16 +1,17 @@
-import 'package:_fe_analyzer_shared/src/scanner/scanner.dart';
-import 'package:analyzer/dart/analysis/features.dart';
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:analyzer/source/line_info.dart';
-import 'package:analyzer/src/fasta/ast_builder.dart';
-import 'package:analyzer/src/string_source.dart';
-import 'package:dart_style/dart_style.dart';
+import 'package:_fe_analyzer_shared/src/scanner/scanner.dart'
+    show ScannerConfiguration;
+import 'package:analyzer/dart/analysis/features.dart' show Feature, FeatureSet;
+import 'package:analyzer/error/listener.dart' show ErrorReporter;
+import 'package:analyzer/source/line_info.dart' show LineInfo;
+import 'package:analyzer/src/fasta/ast_builder.dart' show AstBuilder;
+import 'package:analyzer/src/string_source.dart' show StringSource;
 import 'package:dartx/src/parser.dart';
 import 'package:dartx/src/scanner.dart';
 import 'package:dartx/src/throwing_error_listener.dart';
 
 String convert(String string, {Uri? url}) {
+  string = string.trimRight();
+
   FeatureSet featureSet = FeatureSet.latestLanguageVersion();
 
   ScannerConfiguration configuration = ScannerConfiguration(
@@ -52,16 +53,5 @@ String convert(String string, {Uri? url}) {
   );
 
   builder.parser = parser;
-
-  Token token = scanner.tokenize();
-  parser.parseUnit(token);
-
-  Object? unit = builder.pop();
-
-  if (unit is! CompilationUnit) {
-    throw StateError('Expected CompilationUnit, got $unit');
-  }
-
-  DartFormatter formatter = DartFormatter();
-  return formatter.format('$unit');
+  return parser.parse();
 }

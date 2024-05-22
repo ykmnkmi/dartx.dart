@@ -7,7 +7,13 @@ const String string = '''
 import 'package:deact/deact.dart';
 
 DeactNode app() {
-  return <p class="title">Hello {name}!</p>;
+  return <div>
+    <span>1</span> a  b <span>2</span> c
+
+     {d}
+
+    e <span>3</span>
+  </div>;
 }
 ''';
 
