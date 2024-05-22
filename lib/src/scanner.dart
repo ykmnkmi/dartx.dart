@@ -2,6 +2,8 @@ import 'package:_fe_analyzer_shared/src/scanner/abstract_scanner.dart'
     show AbstractScanner, ScannerConfiguration;
 import 'package:_fe_analyzer_shared/src/scanner/scanner.dart'
     show ScannerConfiguration, Token;
+import 'package:_fe_analyzer_shared/src/scanner/token_constants.dart'
+    show EOF_TOKEN;
 import 'package:dartx/src/string_scanner_base.dart';
 import 'package:dartx/src/token.dart';
 import 'package:dartx/src/x_scanner.dart';
@@ -25,7 +27,7 @@ final class DartXScanner extends AbstractScanner
 
   @override
   void appendToken(Token token) {
-    if (!token.isEof) {
+    if (token.kind != EOF_TOKEN) {
       token = LazyToken(token, this);
     }
 
@@ -35,11 +37,12 @@ final class DartXScanner extends AbstractScanner
   int scanNextToken(int next) {
     Token current = tail;
 
-    while (identical(current, tail)) {
-      next = bigSwitch(next);
-
+    while (identical(tail, current)) {
       if (atEndOfFile()) {
         appendEofToken();
+        break;
+      } else {
+        next = bigSwitch(next);
       }
     }
 

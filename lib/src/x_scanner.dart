@@ -6,6 +6,10 @@ import 'package:source_span/source_span.dart' show SourceFile, SourceSpan;
 mixin XScanner on StringScannerBase {
   SourceFile get sourceFile;
 
+  String get rest {
+    return string.substring(scanOffset);
+  }
+
   void allowSpace({bool required = false}) {
     int start = scanOffset;
 

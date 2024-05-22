@@ -10,7 +10,7 @@ import 'package:dartx/src/scanner.dart';
 import 'package:dartx/src/throwing_error_listener.dart';
 
 String convert(String string, {Uri? url}) {
-  string = string.trimRight();
+  string = '${string.trimRight()}\n';
 
   FeatureSet featureSet = FeatureSet.latestLanguageVersion();
 

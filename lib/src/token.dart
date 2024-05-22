@@ -112,16 +112,13 @@ final class LazyToken implements Token {
   @override
   Token? get next {
     if (token.next == null) {
+      assert(token.offset == scanner.tail.offset);
+
       int code = scanner.string.codeUnitAt(token.end);
       scanner.scanNextToken(code);
     }
 
-    Token next = token.next!;
-    // print(''
-    //     '${scanner.scanOffset.toString().padLeft(4)} '
-    //     '${next.type.name.padLeft(20)} ${next.toString().padLeft(30)} '
-    //     '${stack()}');
-    return next;
+    return token.next;
   }
 
   @override

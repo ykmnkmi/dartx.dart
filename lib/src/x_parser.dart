@@ -241,7 +241,7 @@ mixin XParser on fe.Parser {
       if (children.isEmpty) {
         buffer.write('empty()');
       } else {
-        buffer.write('fragment([');
+        buffer.write('fragment(<DeactNode>[');
         writeChildren(buffer, children);
         buffer.write('])');
       }
@@ -319,7 +319,7 @@ mixin XParser on fe.Parser {
       trimChildren(children);
 
       if (children.isNotEmpty) {
-        buffer.write(', children: <Object>[');
+        buffer.write(', children: <DeactNode>[');
         writeChildren(buffer, children);
         buffer.write(']');
       }
@@ -409,11 +409,11 @@ mixin XParser on fe.Parser {
       if (child is String) {
         writeText(buffer, child);
       } else if (child is Node) {
-        buffer.write(renderNode(child));
-        buffer.write(',');
+        buffer
+          ..write(renderNode(child))
+          ..write(',');
       } else if (child is Expression) {
-        buffer.write(child);
-        buffer.write(',');
+        buffer.write('$child,');
       } else {
         throw StateError('Invalid child: $child');
       }
@@ -421,8 +421,9 @@ mixin XParser on fe.Parser {
   }
 
   void writeText(StringBuffer buffer, String text) {
-    buffer.write(escape(text));
-    buffer.write(',');
+    buffer
+      ..write('txt(${escape(text)})')
+      ..write(',');
   }
 
   Never error(ErrorCode errorCode, [int? position, int? end]) {

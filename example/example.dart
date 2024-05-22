@@ -10,7 +10,7 @@ DeactNode app() {
   return <div>
     <span>1</span> a  b <span>2</span> c
 
-     {d}
+     {showD ? d : txt('')}
 
     e <span>3</span>
   </div>;
