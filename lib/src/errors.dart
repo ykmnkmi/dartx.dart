@@ -50,9 +50,14 @@ const ErrorCode capitalTagName = (
   message: 'Expected lowercase tag name',
 );
 
+const ErrorCode missingAttributeName = (
+  code: 'missing-attribute-name',
+  message: 'Expected attribute name',
+);
+
 const ErrorCode missingAttributeValue = (
   code: 'missing-attribute-value',
-  message: 'Expected value for the attribute',
+  message: 'Expected attribute value',
 );
 
 ErrorCode unclosedAttributeValue(String token) {

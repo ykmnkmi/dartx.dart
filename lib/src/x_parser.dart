@@ -10,7 +10,7 @@ import 'package:dartx/src/html.dart';
 import 'package:dartx/src/patterns.dart';
 import 'package:dartx/src/x_scanner.dart';
 
-typedef Node = (String, List<(String, Object)>, List<Object?>);
+typedef Node = (String, List<(String, Object?)>, List<Object?>);
 
 mixin XParser on fe.Parser {
   AstBuilder get builder;
@@ -30,10 +30,6 @@ mixin XParser on fe.Parser {
 
     if (name.isEmpty) {
       return '';
-    }
-
-    if (capitalLetter.hasMatch(name)) {
-      error(capitalTagName);
     }
 
     if (validTagNameRe.hasMatch(name)) {
@@ -67,30 +63,38 @@ mixin XParser on fe.Parser {
 
   bool readAtribute() {
     String name = scanner.readUntil(attributeNameEndRe);
-
-    if (name.isEmpty) {
-      return false;
-    }
-
     scanner.allowSpace();
 
-    if (scanner.scan('=')) {
-      scanner.allowSpace();
-      String? quoteMark = scanner.read('"') ?? scanner.read("'");
+    int start = scanner.scanOffset;
+    bool hasEqual = scanner.scan('=');
+    scanner.allowSpace();
 
-      if (quoteMark != null) {
-        String raw = scanner.readUntil(quoteMark);
-        String data = decodeCharacterReferences(raw, true);
-        push((name, data));
-        scanner.expect(quoteMark);
-      } else if (scanner.match('{')) {
-        Object? expression = readMustache();
-        push((name, expression));
-      } else {
-        scanner.error(missingAttributeValue);
+    if (hasEqual) {
+      if (name.isEmpty) {
+        scanner.error(missingAttributeName, start);
       }
+    }
+
+    String? quoteMark = scanner.read('"') ?? scanner.read("'");
+
+    if (quoteMark != null) {
+      if (name.isNotEmpty && !hasEqual) {
+        scanner.error(unexpectedToken('='), start);
+      }
+
+      String raw = scanner.readUntil(quoteMark);
+      String data = decodeCharacterReferences(raw, true);
+      push((name, data));
+      scanner.expect(quoteMark);
+    } else if (scanner.match('{')) {
+      Object? expression = readMustache();
+      push((name, expression));
+    } else if (hasEqual) {
+      scanner.error(missingAttributeValue);
+    } else if (name.isNotEmpty) {
+      push((name, null));
     } else {
-      push((name, name));
+      return false;
     }
 
     return true;
@@ -168,7 +172,7 @@ mixin XParser on fe.Parser {
       scanner.expect(closeTag);
     }
 
-    List<(String, Object)> properties = <(String, Object)>[];
+    List<(String, Object?)> properties = <(String, Object?)>[];
     List<Object?> children = pop() as List<Object?>;
 
     while (true) {
@@ -178,7 +182,7 @@ mixin XParser on fe.Parser {
         break;
       }
 
-      if (value is (String, Object)) {
+      if (value is (String, Object?)) {
         properties.add(value);
       } else {
         error(expectedProperty);
@@ -246,11 +250,12 @@ mixin XParser on fe.Parser {
         buffer.write('])');
       }
     } else {
+      bool isComponent = tag.startsWith(capitalLetter);
       buffer.write("el('$tag'");
 
       Object? key, ref;
-      List<(String, Object)> attributes = <(String, Object)>[];
-      List<(String, Object)> listeners = <(String, Object)>[];
+      List<(String, Object?)> attributes = <(String, Object?)>[];
+      List<(String, Object?)> listeners = <(String, Object?)>[];
 
       for (var (name, value) in properties) {
         if (name == 'key') {
@@ -279,10 +284,12 @@ mixin XParser on fe.Parser {
       if (attributes.isNotEmpty) {
         buffer.write(', attributes: <String, Object>{');
 
-        for (var (name, value) in attributes) {
+        for (var (name, value) in attributes.reversed) {
           buffer.write("'$name': ");
 
-          if (value is String) {
+          if (value == null) {
+            buffer.write(isComponent ? 'true' : "'$name'");
+          } else if (value is String) {
             buffer.write(escape(value));
           } else if (value is Expression) {
             buffer.write(value);
@@ -299,7 +306,7 @@ mixin XParser on fe.Parser {
       if (listeners.isNotEmpty) {
         buffer.write(', listeners: <String, Object>{');
 
-        for (var (name, listener) in listeners) {
+        for (var (name, listener) in listeners.reversed) {
           buffer.write("'$name': ");
 
           if (listener is String) {

@@ -1,5 +1,6 @@
 import 'package:_fe_analyzer_shared/src/scanner/token.dart'
-    show CommentToken, Keyword, Token, TokenType;
+    show BeginToken, CommentToken, Keyword, Token, TokenType;
+import 'package:_fe_analyzer_shared/src/util/link.dart' show Link;
 import 'package:dartx/src/scanner.dart';
 
 final class LazyToken implements Token {
@@ -41,7 +42,35 @@ final class LazyToken implements Token {
 
   @override
   Token? get endGroup {
-    return null;
+    int currentOffset = scanner.scanOffset;
+    Link<BeginToken> currentStack = scanner.groupingStack;
+    Token tail = scanner.tail;
+
+    scanner.groupingStack = Link<BeginToken>();
+    scanner.scanOffset = token.offset;
+
+    int char = scanner.string.codeUnitAt(token.offset);
+
+    while (!scanner.atEndOfFile()) {
+      char = scanner.scanNextToken(char);
+
+      if (scanner.groupingStack.isEmpty) {
+        break;
+      }
+    }
+
+    Token? endGroup = scanner.tail;
+
+    if (endGroup != tail) {
+      endGroup.previous = null;
+      endGroup.next?.next?.next;
+    }
+
+    tail.next = null;
+    scanner.tail = tail;
+    scanner.groupingStack = currentStack;
+    scanner.scanOffset = currentOffset;
+    return endGroup;
   }
 
   @override
@@ -112,8 +141,6 @@ final class LazyToken implements Token {
   @override
   Token? get next {
     if (token.next == null) {
-      assert(token.offset == scanner.tail.offset);
-
       int code = scanner.string.codeUnitAt(token.end);
       scanner.scanNextToken(code);
     }

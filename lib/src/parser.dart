@@ -1,19 +1,24 @@
+import 'package:_fe_analyzer_shared/src/messages/codes.dart' as codes;
+import 'package:_fe_analyzer_shared/src/parser/async_modifier.dart'
+    show AsyncModifier;
+import 'package:_fe_analyzer_shared/src/parser/block_kind.dart' show BlockKind;
 import 'package:_fe_analyzer_shared/src/parser/identifier_context.dart'
     show IdentifierContext;
+import 'package:_fe_analyzer_shared/src/parser/modifier_context.dart'
+    show isModifier;
 import 'package:_fe_analyzer_shared/src/parser/parser_impl.dart' as fe
-    show ConstantPatternContext, Parser;
+    show AwaitOrYieldContext, ConstantPatternContext, Parser, PatternContext;
 import 'package:_fe_analyzer_shared/src/parser/type_info.dart'
     show TypeInfo, TypeParamOrArgInfo, computeType, computeTypeParamOrArg;
 import 'package:_fe_analyzer_shared/src/parser/util.dart' show optional;
 import 'package:_fe_analyzer_shared/src/scanner/token.dart'
-    show BeginToken, Token, TokenType;
+    show Token, TokenType;
 import 'package:_fe_analyzer_shared/src/scanner/token_constants.dart'
     show
         FUNCTION_TOKEN,
         IDENTIFIER_TOKEN,
         KEYWORD_TOKEN,
         OPEN_CURLY_BRACKET_TOKEN;
-import 'package:_fe_analyzer_shared/src/util/link.dart' show Link;
 import 'package:analyzer/dart/ast/ast.dart' show CompilationUnit;
 import 'package:analyzer/src/fasta/ast_builder.dart' show AstBuilder;
 import 'package:dart_style/dart_style.dart' show DartFormatter;
@@ -45,38 +50,6 @@ final class DartXParser extends fe.Parser with XParser {
     return builder.pop();
   }
 
-  @override
-  bool looksLikeFunctionBody(Token token) {
-    int currentOffset = scanner.scanOffset;
-    Link<BeginToken> currentStack = scanner.groupingStack;
-    Token tail = scanner.tail;
-
-    scanner.groupingStack = const Link<BeginToken>();
-    scanner.scanOffset = token.offset - 1;
-
-    int char = scanner.advance();
-
-    while (!scanner.atEndOfFile()) {
-      char = scanner.scanNextToken(char);
-
-      if (scanner.groupingStack.isEmpty) {
-        break;
-      }
-    }
-
-    scanner.tail.previous = null;
-    tail.next = null;
-    scanner.tail = tail;
-    scanner.groupingStack = currentStack;
-    scanner.scanOffset = currentOffset;
-
-    Token next = scanner.tail.next!;
-    return optional('{', next) ||
-        optional('=>', next) ||
-        optional('async', next) ||
-        optional('sync', next);
-  }
-
   String parse() {
     Token token = scanner.tokenize();
     parseUnit(token);
@@ -100,6 +73,43 @@ final class DartXParser extends fe.Parser with XParser {
     }
 
     return super.parseExpression(token);
+  }
+
+  @override
+  Token parseExpressionInParenthesisRest(
+    Token token, {
+    required bool allowCase,
+  }) {
+    assert(optional('(', token));
+
+    Token begin = token;
+    token = parseExpression(token);
+
+    Token next = token.next!;
+
+    if (allowPatterns && optional('case', next)) {
+      Token case_ = token = next;
+      token = parsePattern(token, fe.PatternContext.matching);
+      next = token.next!;
+
+      Token? when;
+
+      if (optional('when', next)) {
+        when = token = next;
+        listener.beginPatternGuard(when);
+        token = parseExpression(token);
+        listener.endPatternGuard(when);
+      }
+
+      token = ensureCloseParen(token, begin);
+      listener.handleParenthesizedCondition(begin, case_, when);
+    } else {
+      token = ensureCloseParen(token, begin);
+      listener.handleParenthesizedCondition(begin, null, null);
+    }
+
+    assert(optional(')', token));
+    return token;
   }
 
   @override
@@ -183,5 +193,171 @@ final class DartXParser extends fe.Parser with XParser {
     }
 
     return parseSend(token, context, constantPatternContext);
+  }
+
+  @override
+  Token parseStatementX(Token token) {
+    if (identical(token.next!.kind, IDENTIFIER_TOKEN)) {
+      if (optional(':', token.next!.next!)) {
+        return parseLabeledStatement(token);
+      }
+
+      return parseExpressionStatementOrDeclarationAfterModifiers(
+        token,
+        token,
+        null,
+        null,
+        null,
+      );
+    }
+
+    String? value = token.next!.stringValue;
+
+    if (identical(value, '{')) {
+      // The scanner ensures that `{` always has a closing `}`.
+      if (allowPatterns) {
+        Token next = token.next!;
+
+        if (optional('=', next.endGroup!.next!)) {
+          // Expression statement beginning with a pattern assignment
+          return parseExpressionStatement(token);
+        }
+      }
+
+      return parseBlock(token, BlockKind.statement);
+    }
+
+    if (identical(value, 'return')) {
+      return parseReturnStatement(token);
+    }
+
+    if (identical(value, 'var') || identical(value, 'final')) {
+      Token varOrFinal = token.next!;
+
+      if (!isModifier(varOrFinal.next!)) {
+        return parseExpressionStatementOrDeclarationAfterModifiers(
+          varOrFinal,
+          token,
+          null,
+          varOrFinal,
+          null,
+        );
+      }
+
+      return parseExpressionStatementOrDeclaration(token);
+    }
+
+    if (identical(value, 'if')) {
+      return parseIfStatement(token);
+    }
+
+    if (identical(value, 'await') && optional('for', token.next!.next!)) {
+      return parseForStatement(token.next!, token.next!);
+    }
+
+    if (identical(value, 'for')) {
+      return parseForStatement(token, /* awaitToken = */ null);
+    }
+
+    if (identical(value, 'rethrow')) {
+      return parseRethrowStatement(token);
+    }
+
+    if (identical(value, 'while')) {
+      return parseWhileStatement(token);
+    }
+
+    if (identical(value, 'do')) {
+      return parseDoWhileStatement(token);
+    }
+
+    if (identical(value, 'try')) {
+      return parseTryStatement(token);
+    }
+
+    if (identical(value, 'switch')) {
+      return parseSwitchStatement(token);
+    }
+
+    if (identical(value, 'break')) {
+      return parseBreakStatement(token);
+    }
+
+    if (identical(value, 'continue')) {
+      return parseContinueStatement(token);
+    }
+
+    if (identical(value, 'assert')) {
+      return parseAssertStatement(token);
+    }
+
+    if (identical(value, ';')) {
+      return parseEmptyStatement(token);
+    }
+
+    if (identical(value, 'yield')) {
+      switch (asyncState) {
+        case AsyncModifier.Sync:
+          if (optional(':', token.next!.next!)) {
+            return parseLabeledStatement(token);
+          }
+
+          if (looksLikeYieldStatement(
+              token, fe.AwaitOrYieldContext.Statement)) {
+            // Recovery: looks like an expression preceded by `yield` but not
+            // inside an Async or AsyncStar context. parseYieldStatement will
+            // report the error.
+            return parseYieldStatement(token);
+          }
+
+          return parseExpressionStatementOrDeclaration(token);
+
+        case AsyncModifier.SyncStar || AsyncModifier.AsyncStar:
+          return parseYieldStatement(token);
+
+        case AsyncModifier.Async:
+          return parseYieldStatement(token);
+      }
+    }
+
+    if (identical(value, 'const')) {
+      return parseExpressionStatementOrConstDeclaration(token);
+    }
+
+    if (identical(value, 'await')) {
+      if (inPlainSync) {
+        if (!looksLikeAwaitExpression(
+            token, fe.AwaitOrYieldContext.Statement)) {
+          return parseExpressionStatementOrDeclaration(token);
+        }
+
+        // Recovery: looks like an expression preceded by `await`
+        // but not inside an async context.
+        // Fall through to parseExpressionStatement
+        // and parseAwaitExpression will report the error.
+      }
+
+      return parseExpressionStatement(token);
+    }
+
+    if (identical(value, 'set') && token.next!.next!.isIdentifier) {
+      // Recovery: invalid use of `set`
+      reportRecoverableErrorWithToken(
+        token.next!,
+        codes.templateUnexpectedToken,
+      );
+
+      return parseStatementX(token.next!);
+    }
+
+    if (token.next!.isIdentifier) {
+      if (optional(':', token.next!.next!)) {
+        return parseLabeledStatement(token);
+      }
+
+      return parseExpressionStatementOrDeclaration(token);
+    }
+
+    return parseExpressionStatementOrDeclaration(token);
   }
 }
