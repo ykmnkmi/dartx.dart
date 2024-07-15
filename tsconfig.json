@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "target": "ESNext",
+    "types": [
+      "vite/client"
+    ]
+  },
+  "include": [
+    "./src"
+  ]
+}

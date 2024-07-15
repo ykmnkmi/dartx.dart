@@ -1,3 +1,4 @@
 .dart_tool/
-_*.json
+node_modules/
 pubspec.lock
+pnpm-lock.yaml

@@ -61,7 +61,7 @@ final class DartXParser extends fe.Parser with XParser {
     }
 
     DartFormatter formatter = DartFormatter();
-    return formatter.format('$unit');
+    return formatter.format(scanner.string);
   }
 
   @override

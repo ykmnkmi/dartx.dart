@@ -228,16 +228,15 @@ mixin XParser on fe.Parser {
     }
 
     String code = renderNode(value);
-    parsed = scanner.scanOffset;
-
-    scanner.string = scanner.string.replaceRange(token.offset, parsed, code);
+    int offset = scanner.scanOffset;
+    scanner.string = scanner.string.replaceRange(token.offset, offset, code);
     parsed = token.offset + code.length;
     scanner.scanOffset = token.offset - 1;
     return super.parseExpression(scanner.tail);
   }
 
   String renderNode(Node node) {
-    var (tag, properties, children) = node;
+    var (tag, parameters, children) = node;
 
     StringBuffer buffer = StringBuffer();
 
@@ -250,92 +249,113 @@ mixin XParser on fe.Parser {
         buffer.write('])');
       }
     } else {
-      bool isComponent = tag.startsWith(capitalLetter);
-      buffer.write("el('$tag'");
+      bool isComponent = tag.startsWith(capitalLetter) || tag.contains('.');
 
-      Object? key, ref;
-      List<(String, Object?)> attributes = <(String, Object?)>[];
-      List<(String, Object?)> listeners = <(String, Object?)>[];
+      if (isComponent) {
+        buffer.write('$tag(');
 
-      for (var (name, value) in properties) {
-        if (name == 'key') {
-          key = value;
-        } else if (name == 'ref') {
-          ref = value;
-        } else if (name.startsWith('on')) {
-          listeners.add((name, value));
-        } else {
-          attributes.add((name, value));
+        if (parameters.isNotEmpty) {
+          for (var (name, value) in parameters.reversed) {
+            buffer.write('$name: ');
+
+            if (value == null) {
+              buffer.write(isComponent ? 'true' : "'$name'");
+            } else if (value is String) {
+              buffer.write(escape(value));
+            } else if (value is Expression) {
+              buffer.write(value);
+            } else {
+              throw StateError('Invalid value: $value');
+            }
+
+            buffer.write(',');
+          }
         }
-      }
+      } else {
+        Object? key, ref;
+        List<(String, Object?)> attributes = <(String, Object?)>[];
+        List<(String, Object?)> listeners = <(String, Object?)>[];
 
-      if (key != null) {
-        buffer
-          ..write(', key: ')
-          ..write(key);
-      }
-
-      if (ref != null) {
-        buffer
-          ..write(', ref: ')
-          ..write(ref);
-      }
-
-      if (attributes.isNotEmpty) {
-        buffer.write(', attributes: <String, Object>{');
-
-        for (var (name, value) in attributes.reversed) {
-          buffer.write("'$name': ");
-
-          if (value == null) {
-            buffer.write(isComponent ? 'true' : "'$name'");
-          } else if (value is String) {
-            buffer.write(escape(value));
-          } else if (value is Expression) {
-            buffer.write(value);
+        for (var (name, value) in parameters) {
+          if (name == 'key') {
+            key = value;
+          } else if (name == 'ref') {
+            ref = value;
+          } else if (name.startsWith('on')) {
+            listeners.add((name, value));
           } else {
-            throw StateError('Invalid value: $value');
+            attributes.add((name, value));
+          }
+        }
+
+        buffer.write("el('$tag'");
+
+        if (key != null) {
+          buffer
+            ..write(', key: ')
+            ..write(key);
+        }
+
+        if (ref != null) {
+          buffer
+            ..write(', ref: ')
+            ..write(ref);
+        }
+
+        if (attributes.isNotEmpty) {
+          buffer.write(', attributes: <String, Object>{');
+
+          for (var (name, value) in attributes.reversed) {
+            buffer.write("'$name': ");
+
+            if (value == null) {
+              buffer.write(isComponent ? 'true' : "'$name'");
+            } else if (value is String) {
+              buffer.write(escape(value));
+            } else if (value is Expression) {
+              buffer.write(value);
+            } else {
+              throw StateError('Invalid value: $value');
+            }
+
+            buffer.write(',');
           }
 
-          buffer.write(',');
+          buffer.write('},');
         }
 
-        buffer.write('}');
-      }
+        if (listeners.isNotEmpty) {
+          buffer.write(', listeners: <String, Object>{');
 
-      if (listeners.isNotEmpty) {
-        buffer.write(', listeners: <String, Object>{');
+          for (var (name, listener) in listeners.reversed) {
+            buffer.write("'$name': ");
 
-        for (var (name, listener) in listeners.reversed) {
-          buffer.write("'$name': ");
+            if (listener is String) {
+              buffer.write(escape(listener));
+            } else if (listener is Expression) {
+              buffer.write(listener);
+            } else {
+              throw StateError('Invalid listener: $listener');
+            }
 
-          if (listener is String) {
-            buffer.write(escape(listener));
-          } else if (listener is Expression) {
-            buffer.write(listener);
-          } else {
-            throw StateError('Invalid listener: $listener');
+            buffer.write(',');
           }
 
-          buffer.write(',');
+          buffer.write('},');
         }
-
-        buffer.write('}');
       }
-
-      trimChildren(children);
 
       if (children.isNotEmpty) {
-        buffer.write(', children: <DeactNode>[');
+        buffer.write('children: <DeactNode>[');
+        trimChildren(children);
         writeChildren(buffer, children);
-        buffer.write(']');
+        buffer.write('],');
       }
 
-      buffer.write(',)');
+      buffer.write(')');
     }
 
-    String code = '$buffer';
-    return code;
+    return buffer.toString();
   }
 
   void trimChildren(List<Object?> children) {
@@ -414,7 +434,7 @@ mixin XParser on fe.Parser {
   void writeChildren(StringBuffer buffer, List<Object?> children) {
     for (Object? child in children) {
       if (child is String) {
-        writeText(buffer, child);
+        buffer.write('txt(${escape(child)}),');
       } else if (child is Node) {
         buffer
           ..write(renderNode(child))
@@ -425,12 +445,6 @@ mixin XParser on fe.Parser {
         throw StateError('Invalid child: $child');
       }
     }
-  }
-
-  void writeText(StringBuffer buffer, String text) {
-    buffer
-      ..write('txt(${escape(text)})')
-      ..write(',');
   }
 
   Never error(ErrorCode errorCode, [int? position, int? end]) {
