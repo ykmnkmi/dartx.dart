@@ -40,6 +40,7 @@ const main = async () => {
 
   editor.create(document.querySelector('#editor')!, {
     automaticLayout: true,
+    fontFamily: 'DM Mono',
     minimap: { enabled: false },
     model: editorModel,
     scrollBeyondLastLine: false,
@@ -48,6 +49,7 @@ const main = async () => {
 
   editor.create(document.querySelector('#viewer')!, {
     automaticLayout: true,
+    fontFamily: 'DM Mono',
     minimap: { enabled: false },
     model: viewerModel,
     scrollBeyondLastLine: false,
