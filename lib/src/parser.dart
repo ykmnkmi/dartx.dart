@@ -20,6 +20,7 @@ import 'package:_fe_analyzer_shared/src/scanner/token_constants.dart'
         KEYWORD_TOKEN,
         OPEN_CURLY_BRACKET_TOKEN;
 import 'package:analyzer/dart/ast/ast.dart' show CompilationUnit;
+import 'package:analyzer/error/error.dart';
 import 'package:analyzer/src/fasta/ast_builder.dart' show AstBuilder;
 import 'package:dart_style/dart_style.dart' show DartFormatter;
 import 'package:dartx/src/scanner.dart';
@@ -52,7 +53,12 @@ final class DartXParser extends fe.Parser with XParser {
 
   String parse() {
     Token token = scanner.tokenize();
-    parseUnit(token);
+
+    try {
+      parseUnit(token);
+    } on AnalysisError catch (error) {
+      scanner.dartError(error.message, error.offset, error.length);
+    }
 
     Object? unit = builder.pop();
 
@@ -82,7 +88,7 @@ final class DartXParser extends fe.Parser with XParser {
   }) {
     assert(optional('(', token));
 
-    Token begin = token;
+    Token begin = token; // BeginToken begin = token as BeginToken;
     token = parseExpression(token);
 
     Token next = token.next!;

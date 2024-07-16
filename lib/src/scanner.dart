@@ -11,16 +11,25 @@ import 'package:source_span/source_span.dart' show SourceFile;
 
 final class DartXScanner extends AbstractScanner
     with StringScannerBase, XScanner {
-  DartXScanner(this.string, {ScannerConfiguration? configuration, Uri? url})
-      : sourceFile = SourceFile.fromString(string, url: url),
+  DartXScanner(String string, {ScannerConfiguration? configuration, Uri? url})
+      : _string = string,
+        sourceFile = SourceFile.fromString(string, url: url),
         scanOffset = -1,
         super(configuration, true, null);
 
   @override
-  final SourceFile sourceFile;
+  SourceFile sourceFile;
+
+  String _string;
 
   @override
-  String string;
+  String get string => _string;
+
+  @override
+  set string(String value) {
+    _string = value;
+    sourceFile = SourceFile.fromString(string, url: sourceFile.url);
+  }
 
   @override
   int scanOffset;
@@ -41,9 +50,9 @@ final class DartXScanner extends AbstractScanner
       if (atEndOfFile()) {
         appendEofToken();
         break;
-      } else {
-        next = bigSwitch(next);
       }
+
+      next = bigSwitch(next);
     }
 
     return next;
@@ -53,10 +62,6 @@ final class DartXScanner extends AbstractScanner
   Token tokenize() {
     scanNextToken(advance());
     return firstToken();
-  }
-
-  void replace(int offset, int position, String html) {
-    throw (offset, position, html);
   }
 
   void end() {

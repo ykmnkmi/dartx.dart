@@ -346,6 +346,10 @@ mixin XParser on fe.Parser {
       }
 
       if (children.isNotEmpty) {
+        if (!isComponent) {
+          buffer.write(', ');
+        }
+
         buffer.write('children: <DeactNode>[');
         trimChildren(children);
         writeChildren(buffer, children);

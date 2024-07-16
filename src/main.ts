@@ -55,6 +55,7 @@ const main = async () => {
   });
 
   document.querySelector('#loading')!.remove();
+  onChange();
 };
 
 main();

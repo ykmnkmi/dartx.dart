@@ -30,7 +30,14 @@ main {
   display: flex;
 }
 
-main > div {
+@media (max-width: 1250px) {
+  main {
+    flex-direction: column;
+    min-height: 700px;
+  }
+}
+
+main>div {
   flex: 1
 }
 

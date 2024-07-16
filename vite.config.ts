@@ -4,7 +4,7 @@ export default defineConfig({
   assetsInclude: ['src/compile.wasm'],
   base: '',
   build: {
-    emptyOutDir: false,
+    emptyOutDir: true,
     outDir: 'docs',
     // rollupOptions: {
     //   output: {

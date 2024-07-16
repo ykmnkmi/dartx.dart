@@ -1,4 +1,6 @@
 .dart_tool/
+.sdk/
+bin/
 node_modules/
 pubspec.lock
 pnpm-lock.yaml
