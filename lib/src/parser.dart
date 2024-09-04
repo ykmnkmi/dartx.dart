@@ -71,14 +71,20 @@ final class DartXParser extends fe.Parser with XParser {
   }
 
   @override
-  Token parseExpression(Token token) {
+  Token parsePrecedenceExpression(
+    Token token,
+    int precedence,
+    bool allowCascades,
+    fe.ConstantPatternContext constantPatternContext,
+  ) {
     Token? next = token.next;
 
     if (next != null && next.type == TokenType.LT && next.offset >= parsed) {
       return parseNode(next);
     }
 
-    return super.parseExpression(token);
+    return super.parsePrecedenceExpression(
+        token, precedence, allowCascades, constantPatternContext);
   }
 
   @override

@@ -246,7 +246,7 @@ mixin XParser on fe.Parser {
       } else {
         buffer.write('fragment(<DeactNode>[');
         writeChildren(buffer, children);
-        buffer.write('])');
+        buffer.write('],)');
       }
     } else {
       bool isComponent = tag.startsWith(capitalLetter) || tag.contains('.');
@@ -444,7 +444,8 @@ mixin XParser on fe.Parser {
           ..write(renderNode(child))
           ..write(',');
       } else if (child is Expression) {
-        buffer.write('$child,');
+        buffer
+            .write("if ($child case DeactNode node) node else txt('\$node'),");
       } else {
         throw StateError('Invalid child: $child');
       }

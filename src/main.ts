@@ -19,8 +19,16 @@ self.MonacoEnvironment = {
 const EXAMPLE = `\
 import 'package:deact/deact.dart';
 
-DeactNode app() {
-  return <Parent>Hello <Name name={<b>world</b>} />!</Parent>;
+DeactNode app({User? user}) {
+  DeactNode name;
+
+  if (user == null) {
+    name = <b>world</b>;
+  } else {
+    name = <b>{user.name}</b>;
+  }
+
+  return <Parent>Hello <Name name={name} />!</Parent>;
 }
 `;
 
@@ -40,7 +48,9 @@ const main = async () => {
 
   editor.create(document.querySelector('#editor')!, {
     automaticLayout: true,
+    folding: false,
     fontFamily: 'DM Mono',
+    lineNumbersMinChars: 3,
     minimap: { enabled: false },
     model: editorModel,
     scrollBeyondLastLine: false,
@@ -49,9 +59,12 @@ const main = async () => {
 
   editor.create(document.querySelector('#viewer')!, {
     automaticLayout: true,
+    folding: false,
     fontFamily: 'DM Mono',
+    lineNumbersMinChars: 3,
     minimap: { enabled: false },
     model: viewerModel,
+    readOnly: true,
     scrollBeyondLastLine: false,
     tabSize: 2,
   });
