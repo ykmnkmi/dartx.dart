@@ -1,6 +1,6 @@
 name: dartx
 description: Parser and utilities for DartX.
-version: 0.0.8
+version: 0.0.9
 repository: https://github.com/ykmnkmi/dartx.dart
 
 environment:

@@ -3,6 +3,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:js": "dart compile js -O4 -o src/compile.dart.js lib/compile.dart",
     "build:wasm": "dart compile wasm -E --js-runtime-output=src/compile.js -o src/compile.wasm lib/compile.dart"
   },
   "devDependencies": {

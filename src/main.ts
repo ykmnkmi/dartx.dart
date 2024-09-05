@@ -5,9 +5,8 @@ import { editor, Uri } from 'monaco-editor/esm/vs/editor/editor.api';
 
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 
-import { instantiate, invoke } from './compile.js';
-
-import compileUrl from './compile.wasm?url';
+import compileWasmUrl from './compile.wasm?url';
+import compileJsUrl from './compile.dart.js?url';
 
 // @ts-ignore
 self.MonacoEnvironment = {
@@ -33,9 +32,34 @@ DeactNode app({User? user}) {
 `;
 
 const main = async () => {
-  const module = WebAssembly.compileStreaming(fetch(compileUrl));
-  const instance = await instantiate(module, {});
-  invoke(instance);
+  try {
+    if (WebAssembly.validate(Uint8Array.of(0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0))) {
+      const { instantiate, invoke } = await import('./compile.js');
+      const module = WebAssembly.compileStreaming(fetch(compileWasmUrl));
+      const instance = await instantiate(module, {});
+      invoke(instance);
+    } else {
+      const script = document.createElement('script');
+      script.type = 'text/javascript';
+      script.src = compileJsUrl;
+
+      const promise = new Promise((resolve, reject) => {
+        script.addEventListener('load', () => {
+          resolve(null);
+        });
+
+        script.addEventListener('error', () => {
+          reject('Failed to load script: ' + compileJsUrl);
+        });
+      });
+
+      document.head.appendChild(script);
+      await promise;
+    }
+  } catch (error) {
+    console.error(error);
+    document.querySelector('#loading')!.textContent = `${error}`;
+  }
 
   let editorModel = editor.createModel(EXAMPLE, 'dartx', Uri.parse('app.dartx'));
   let viewerModel = editor.createModel('', 'dart', Uri.parse('app.dart'));

@@ -6,6 +6,7 @@ JSX alternative for packages like `deact` and `jaspr`.
 
 TODO:
 - Comments
+- Lower component names
 - Collections literal alternative:
   - `<T>[t, ...]` > `listOf<T>(T t, ...)`
   - `<T>{t, ...}` > `setOf<T>(T t, ...)`

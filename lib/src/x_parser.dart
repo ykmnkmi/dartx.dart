@@ -437,18 +437,29 @@ mixin XParser on fe.Parser {
 
   void writeChildren(StringBuffer buffer, List<Object?> children) {
     for (Object? child in children) {
-      if (child is String) {
-        buffer.write('txt(${escape(child)}),');
-      } else if (child is Node) {
-        buffer
-          ..write(renderNode(child))
-          ..write(',');
-      } else if (child is Expression) {
-        buffer
-            .write("if ($child case DeactNode node) node else txt('\$node'),");
-      } else {
-        throw StateError('Invalid child: $child');
-      }
+      writeChild(child, buffer);
+    }
+  }
+
+  void writeChild(Object? child, StringBuffer buffer) {
+    if (child is String) {
+      buffer.write('txt(${escape(child)}),');
+    } else if (child is Node) {
+      buffer
+        ..write(renderNode(child))
+        ..write(',');
+    } else if (child is StringLiteral) {
+      buffer
+        ..write('txt(')
+        ..write(child)
+        ..write(')');
+    } else if (child is Expression) {
+      buffer
+        ..write('if (')
+        ..write(child)
+        ..write(" case DeactNode node) node else txt('\$node'),");
+    } else {
+      throw StateError('Invalid child: $child');
     }
   }
 
